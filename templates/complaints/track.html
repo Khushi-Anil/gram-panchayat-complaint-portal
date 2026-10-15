@@ -1,0 +1,67 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track a complaint | Gram Panchayat Portal</title>
+  <style>
+    body { margin: 0; padding: 32px 16px; background: #f3f7f3; color: #17251f; font-family: Segoe UI, Arial, sans-serif; }
+    main { max-width: 620px; margin: auto; padding: 32px; background: white; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    h1 { color: #175b38; } label { display: block; margin: 18px 0 6px; font-weight: 600; }
+    input { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; }
+    button { margin-top: 18px; padding: 12px 20px; border: 0; border-radius: 6px; background: #176b40; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    .result, .notice { margin-top: 24px; padding: 16px; background: #edf7ef; }
+    .errorlist { color: #a32121; } a { color: #176b40; }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body>
+<main class="form-page track-page">
+  <header class="page-header"><a class="brand" href="{% url 'complaints:public_dashboard' %}"><span class="brand-mark" aria-hidden="true">GP</span><span><span class="brand-name">Gram Panchayat</span><span class="brand-subtitle">Citizen service portal</span></span></a><nav class="page-nav" aria-label="Page navigation"><a href="{% url 'complaints:public_dashboard' %}">Dashboard</a><a href="{% url 'complaints:submit' %}">Submit a complaint</a><a href="{% url 'complaints:ledger' %}">Public ledger</a>{% if request.user.is_authenticated and not request.user.is_staff %}<a href="{% url 'complaints:citizen_dashboard' %}">My complaints</a>{% endif %}<a href="{% url 'complaints:official_login' %}">Staff sign in</a></nav></header>
+  {% if messages %}{% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% endif %}
+  <div class="form-intro"><p class="eyebrow">Citizen services · Case updates</p><h1>Track a complaint</h1><p>Enter the reference from your receipt to view basic progress. Add your private tracking secret to see the full timeline and send feedback.</p></div>
+  <form method="post" class="tracking-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="{{ form.complaint_id.id_for_label }}">{{ form.complaint_id.label }}</label>
+    {{ form.complaint_id }}
+    {{ form.complaint_id.errors }}
+    <label for="{{ form.tracking_secret.id_for_label }}">{{ form.tracking_secret.label }}</label>
+    {{ form.tracking_secret }}
+    <button type="submit">Check status</button>
+  </form>
+  {% if not_found %}<p class="notice" role="status">No complaint was found for that reference. Check it and try again.</p>{% endif %}
+  {% if complaint %}
+    <section class="result" aria-live="polite">
+      <h2>Complaint status</h2>
+      <p><strong>Reference:</strong> {{ complaint.complaint_id }}</p>
+      <p><strong>Status:</strong> <span class="status-pill status-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
+      <p><strong>Submitted:</strong> {{ complaint.created_at|date:"j M Y, g:i A" }}</p>
+      {% if complaint.target_resolution_at %}<p><strong>Target date:</strong> {{ complaint.target_resolution_at|date:"j M Y" }}{% if complaint.is_overdue %} (Overdue){% endif %}</p>{% endif %}
+      {% if secret_valid %}
+        <h3>Complaint details</h3>
+        <p><strong>Category:</strong> {{ complaint.get_category_display }}</p>
+        <p><strong>Village / ward:</strong> {{ complaint.village_name }} · Ward {{ complaint.ward_number }}</p>
+        <p><strong>Location:</strong> {{ complaint.location_landmark }}</p>
+        {% if complaint.noticed_on %}<p><strong>Problem noticed:</strong> {{ complaint.noticed_on|date:"j M Y" }}</p>{% endif %}
+        <p><strong>Details:</strong> {{ complaint.description }}</p>
+        {% if complaint.assigned_to %}<p><strong>Assigned team:</strong> {{ complaint.assigned_to }}</p>{% endif %}
+        {% if complaint.photo %}<p><a href="{{ complaint.photo.url }}">View submitted photo</a></p>{% endif %}
+        <h3>Action timeline</h3>
+        {% if actions %}<ol>{% for action in actions %}<li><strong>{{ action.get_new_status_display }}</strong> · {{ action.created_at|date:"j M Y, g:i A" }} — {{ action.note }}{% if action.resolution_photo %}<br><a href="{{ action.resolution_photo.url }}">View resolution evidence photo</a>{% endif %}</li>{% endfor %}</ol>{% endif %}
+        <h3>Feedback / request reinspection</h3>
+        <form method="post" action="{% url 'complaints:citizen_feedback' complaint.complaint_id %}">{% csrf_token %}
+          <input type="hidden" name="complaint_id" value="{{ complaint.complaint_id }}">
+          <input type="hidden" name="tracking_secret" value="{{ tracking_secret_value }}">
+          <label for="feedback-message">Your feedback or reason</label><textarea id="feedback-message" name="message" maxlength="1000" required></textarea>
+          {% if complaint.status == "RESOLVED" or complaint.status == "CLOSED" %}<label><input type="checkbox" name="requests_reinspection" value="on"> Reopen for reinspection (within 7 days of resolution)</label>{% endif %}
+          <button type="submit">Send feedback</button>
+        </form>
+      {% elif complaint.tracking_secret_hash %}<p class="notice">Enter your private tracking secret to view the full timeline and send feedback.</p>{% endif %}
+    </section>
+  {% endif %}
+  <p><a href="{% url 'complaints:submit' %}">Submit a complaint</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit complaint | Gram Panchayat Portal</title>
+  <style>
+    body { margin: 0; padding: 24px 16px; background: #f3f7f3; color: #17251f; font-family: Segoe UI, Arial, sans-serif; }
+    main { max-width: 850px; margin: auto; padding: 28px; background: white; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    h1, h2 { color: #175b38; } label { display: block; margin: 16px 0 6px; font-weight: 600; }
+    input, select, textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; }
+    button { margin-top: 18px; padding: 12px 20px; border: 0; border-radius: 6px; background: #176b40; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    a { color: #176b40; } .errorlist { color: #a12d2d; }
+    .notice { padding: 14px; background: #f5f8f5; }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body><main>
+  <p><a href="{% url 'complaints:official_update' complaint.complaint_id %}">Back to complaint</a></p>
+  <h1>Edit complaint details</h1>
+  <p>Reference: <strong>{{ complaint.complaint_id }}</strong>. Each saved edit is added to the action history.</p>
+  <div class="notice">Changes here update the complaint record. Status and official actions are managed on the review page.</div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+      {{ field.errors }}
+    {% endfor %}
+    <button type="submit">Save complaint edits</button>
+  </form>
+</main></body>
+</html>

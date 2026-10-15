@@ -1,0 +1,66 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review complaint | Gram Panchayat Portal</title>
+  <style>
+    body { margin: 0; padding: 24px 16px; background: #f3f7f3; color: #17251f; font-family: Segoe UI, Arial, sans-serif; }
+    main { max-width: 850px; margin: auto; padding: 28px; background: white; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    h1, h2 { color: #175b38; } .detail, .history { padding: 16px; background: #f5f8f5; margin: 18px 0; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; }
+    select, textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; }
+    button { margin-top: 18px; padding: 12px 20px; border: 0; border-radius: 6px; background: #176b40; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    a { color: #176b40; } .messages { padding: 10px 14px; background: #edf7ef; }
+    li { margin: 10px 0; }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body>
+<main>
+  <p><a href="{% url 'complaints:official_dashboard' %}">Back to dashboard</a></p>
+  <h1>Review complaint</h1>
+  {% if messages %}<div class="messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+  <section class="detail">
+    <p><strong>Reference:</strong> {{ complaint.complaint_id }}</p>
+    <p><strong>Ward:</strong> {{ complaint.ward_number }}</p>
+    <p><strong>Village:</strong> {{ complaint.village_name }}</p>
+    <p><strong>Specific location:</strong> {{ complaint.location_landmark }}</p>
+    {% if complaint.noticed_on %}<p><strong>Problem noticed:</strong> {{ complaint.noticed_on|date:"j M Y" }}</p>{% endif %}
+    <p><strong>Category:</strong> {{ complaint.get_category_display }}</p>
+    <p><strong>Title:</strong> {{ complaint.title }}</p>
+    <p><strong>Details:</strong><br>{{ complaint.description|linebreaksbr }}</p>
+    {% if complaint.photo %}<p><strong>Citizen photo:</strong><br><a href="{{ complaint.photo.url }}" target="_blank" rel="noopener noreferrer"><img src="{{ complaint.photo.url }}" alt="Citizen evidence" style="max-width:100%;max-height:320px"></a></p>{% endif %}
+    {% if complaint.private_contact %}<p><strong>Private contact details (official use):</strong><br>{{ complaint.private_contact.citizen_name }} · {{ complaint.private_contact.citizen_phone }}{% if complaint.private_contact.citizen_email %} · {{ complaint.private_contact.citizen_email }}{% endif %}</p>{% endif %}
+    <p><strong>Current status:</strong> {{ complaint.get_status_display }}</p>
+    <p><strong>Priority:</strong> {{ complaint.get_priority_display }}</p>
+    <p><strong>Assigned to:</strong> {{ complaint.assigned_to|default:"Unassigned" }}</p>
+    {% if complaint.target_resolution_at %}<p><strong>Target date:</strong> {{ complaint.target_resolution_at|date:"j M Y, g:i A" }}{% if complaint.is_overdue %} <strong>(Overdue)</strong>{% endif %}</p>{% endif %}
+    {% if complaint.verified_resolved %}<p><strong>Resolution:</strong> Marked independently verified</p>{% endif %}
+    {% if complaint.escalated_at %}<p><strong>Escalation:</strong> Marked for escalation on {{ complaint.escalated_at|date:"j M Y, g:i A" }}</p>{% endif %}
+  </section>
+  <h2>Record an action</h2>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.name == "resolution_photo" %} (required when resolving){% endif %}</label>{{ field }}{% if field.name == "resolution_photo" %}<p>To mark this complaint resolved, upload proof of completed work and write a clear summary of at least 15 characters.</p>{% endif %}{{ field.errors }}{% endfor %}
+    <button type="submit">Save status update</button>
+  </form>
+  <section class="history">
+    <h2>Action history</h2>
+    {% if actions %}<ol>
+      {% for action in actions %}
+        <li>
+          {% if action.is_archive_event %}<strong>{{ action.get_archive_operation_display }}</strong>{% elif action.is_escalation %}<strong>Escalation recorded</strong>{% else %}<strong>{{ action.get_new_status_display }}</strong>{% endif %}
+          · {{ action.created_at|date:"j M Y, g:i A" }}
+          {% if action.actor %} · {{ action.actor.username }}{% elif action.is_escalation %} · Automatic system check{% elif action.new_status == "REOPENED" %} · Citizen request{% else %} · Citizen submission{% endif %}<br>
+          {% if action.previous_status %}From {{ action.get_previous_status_display }}. {% endif %}{{ action.note }}
+          {% if action.resolution_photo %}<br><a href="{{ action.resolution_photo.url }}" target="_blank" rel="noopener noreferrer">View resolution evidence photo</a>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>{% else %}<p>No actions recorded yet.</p>{% endif %}
+  </section>
+  {% if feedback_items %}<section class="history"><h2>Citizen feedback / reinspection requests</h2><ol>{% for feedback in feedback_items %}<li>{{ feedback.created_at|date:"j M Y, g:i A" }}{% if feedback.requests_reinspection %} · Reinspection requested{% endif %}<br>{{ feedback.message }}</li>{% endfor %}</ol></section>{% endif %}
+</main>
+</body>
+</html>

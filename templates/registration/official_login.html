@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Official sign in | Gram Panchayat Portal</title>
+  <style>
+    body { margin: 0; padding: 32px 16px; background: #f3f7f3; color: #17251f; font-family: Segoe UI, Arial, sans-serif; }
+    main { max-width: 520px; margin: auto; padding: 32px; background: white; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    h1 { color: #175b38; } label { display: block; margin: 18px 0 6px; font-weight: 600; }
+    input { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; }
+    button { margin-top: 20px; padding: 12px 20px; border: 0; border-radius: 6px; background: #176b40; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    .errorlist, .errornote { color: #a32121; } a { color: #176b40; }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body>
+<main>
+  <h1>Official staff sign in</h1>
+  <p>Sign in with an authorized Django staff account.</p>
+  {% if form.non_field_errors %}<div class="errornote">{{ form.non_field_errors }}</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% for field in form %}
+      {% if field.name != "remember_me" %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}{{ field.errors }}
+      {% endif %}
+    {% endfor %}
+    <button type="submit">Sign in</button>
+  </form>
+  <p><a href="{% url 'complaints:submit' %}">Citizen complaint form</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{% load static %}
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My complaints | Gram Panchayat</title>
+  <style>
+    body { margin:0; padding:24px 16px; background:#f3f7f3; color:#17251f; font-family:"Segoe UI",Arial,sans-serif; }
+    main { max-width:1000px; margin:auto; padding:28px; background:#fff; }
+    h1,h2 { color:#175b38; }
+    .intro { margin:28px 0 20px; }
+    .intro p { color:#53665d; }
+    .complaint-card { display:grid; grid-template-columns:1fr auto; align-items:center; gap:16px; margin:12px 0; padding:18px; border:1px solid #dce8de; border-radius:12px; background:#fff; }
+    .complaint-card h2 { margin:0 0 5px; font-size:1.12rem; }
+    .complaint-meta { display:flex; flex-wrap:wrap; gap:8px 15px; color:#56685e; font-size:.9rem; }
+    .reference { color:#475b4e; font-size:.84rem; font-weight:650; }
+    .empty-state { margin-top:20px; padding:24px; border:1px dashed #b7cbbb; border-radius:12px; background:#f7faf7; }
+    .empty-state h2 { margin-top:0; }
+    .status-pill { display:inline-flex; padding:5px 10px; border-radius:999px; background:#e8eff8; color:#315477; font-size:.82rem; font-weight:750; }
+    .status-pill.status-in_progress,.status-pill.status-assigned { background:#fff2d9; color:#77520c; }
+    .status-pill.status-resolved,.status-pill.status-closed { background:#e0f2e5; color:#155d31; }
+    @media(max-width:620px) { .complaint-card { grid-template-columns:1fr; } }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head><body><main class="form-page">
+  <header class="page-header"><a class="brand" href="{% url 'complaints:public_dashboard' %}"><span class="brand-mark" aria-hidden="true">GP</span><span><span class="brand-name">Gram Panchayat</span><span class="brand-subtitle">Citizen service portal</span></span></a><nav class="page-nav" aria-label="Page navigation"><a href="{% url 'complaints:public_dashboard' %}">Dashboard</a><a href="{% url 'complaints:track' %}">Track</a><a href="{% url 'complaints:submit' %}">Submit complaint</a><form method="post" action="{% url 'complaints:citizen_logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form></nav></header>
+  {% if messages %}{% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% endif %}
+  <div class="intro"><p class="eyebrow">Citizen account · Personal dashboard</p><h1>My complaints</h1><p>Welcome, {{ request.user.username }}. View and edit complaints submitted while signed in.</p><p class="help">Complaints submitted before account linking, or while signed out, can still be checked with their reference and private tracking secret on the Track page.</p></div>
+  {% if complaints %}
+    <p>{{ complaints|length }} complaint{{ complaints|length|pluralize }} linked to your account.</p>
+    {% for complaint in complaints %}
+      <article class="complaint-card">
+        <div><h2>{{ complaint.title }}</h2><div class="complaint-meta"><span>Ward {{ complaint.ward_number }}</span><span>{{ complaint.get_category_display }}</span><span>Submitted {{ complaint.created_at|date:"j M Y, g:i A" }}</span></div><p class="reference">Reference: {{ complaint.complaint_id }}</p></div>
+        <div><p><span class="status-pill status-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span>{% if complaint.is_archived %} <span class="status-pill">Archived</span>{% endif %}</p><a class="button-link" href="{% url 'complaints:citizen_edit' complaint.complaint_id %}">Edit complaint</a></div>
+      </article>
+    {% endfor %}
+  {% else %}
+    <section class="empty-state"><h2>No complaints linked yet</h2><p>Complaints submitted while signed in will appear here, even if you choose not to share contact details. Complaints submitted while signed out cannot be linked to this account.</p><a class="button-link" href="{% url 'complaints:submit' %}">Submit a complaint</a></section>
+  {% endif %}
+</main></body></html>

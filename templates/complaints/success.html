@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Complaint submitted | Gram Panchayat Portal</title>
+  <style>
+    body { margin: 0; padding: 48px 16px; background: #f3f7f3; color: #17251f; font-family: Segoe UI, Arial, sans-serif; }
+    main { max-width: 620px; margin: auto; padding: 32px; background: white; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    h1 { color: #175b38; } .ref { padding: 16px; background: #edf7ef; font-size: 1.35rem; font-weight: 700; letter-spacing: .04em; }
+    a { color: #176b40; }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body>
+<main>
+  <h1>Complaint submitted</h1>
+  <p>Your complaint has been saved. Keep this reference to identify it:</p>
+  <p class="ref">{{ complaint_id }}</p>
+  <p>Keep your complaint reference. The public tracker shows basic status only.</p>
+  {% if tracking_secret %}<h2>Your private tracking secret</h2><p class="ref">{{ tracking_secret }}</p><p><strong>Save this secret now.</strong> It is shown only once and is needed to view the action timeline, send feedback, or request reopening within seven days after resolution.</p>{% else %}<p>This older complaint does not have a private tracking secret.</p>{% endif %}
+  <p><a href="{% url 'complaints:track' %}">Track this complaint</a></p>
+  <p><a href="{% url 'complaints:public_dashboard' %}">View public ward statistics</a></p>
+  <p><a href="{% url 'complaints:submit' %}">Submit another complaint</a>{% if request.user.is_authenticated and not request.user.is_staff %} · <a href="{% url 'complaints:citizen_dashboard' %}">View my complaints</a>{% endif %}</p>
+</main>
+</body>
+</html>

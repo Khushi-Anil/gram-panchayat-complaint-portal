@@ -1,0 +1,71 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Official complaints | Gram Panchayat Portal</title>
+  <style>
+    body { margin: 0; padding: 24px 16px; background: #f3f7f3; color: #17251f; font-family: Segoe UI, Arial, sans-serif; }
+    main { max-width: 1050px; margin: auto; padding: 28px; background: white; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    h1 { color: #175b38; } table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #dce5de; text-align: left; }
+    th { background: #edf7ef; } a { color: #176b40; }
+    button { padding: 9px 14px; border: 0; border-radius: 6px; background: #176b40; color: white; font: inherit; cursor: pointer; }
+    .messages { padding: 10px 14px; background: #edf7ef; }
+    .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 22px 0; padding: 16px; background: #f5f8f5; }
+    .filters label { display: block; margin-bottom: 5px; font-weight: 600; }
+    .filters input, .filters select { box-sizing: border-box; width: 100%; padding: 9px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; }
+    .filters button { align-self: end; }
+    @media (max-width: 650px) { table { font-size: .9rem; } th, td { padding: 8px 5px; } }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>Official complaint dashboard</h1><p>Signed in as {{ request.user.username }}. Complaint details are visible to authorized staff.</p><a href="{% url 'complaints:public_dashboard' %}">Public ward dashboard</a></div>
+    <form method="post" action="{% url 'complaints:official_logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+  </header>
+  {% if messages %}<div class="messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+  <form method="get" class="filters" aria-label="Filter complaints">
+    <div><label for="q">Reference contains</label><input id="q" name="q" value="{{ filters.q }}" placeholder="GP-2026…"></div>
+    <div><label for="ward">Ward number</label><input id="ward" name="ward" type="number" min="1" max="99" value="{{ filters.ward }}"></div>
+    <div><label for="status">Status</label><select id="status" name="status"><option value="">All statuses</option>{% for value,label in status_choices %}<option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label for="category">Category</label><select id="category" name="category"><option value="">All categories</option>{% for value,label in category_choices %}<option value="{{ value }}"{% if filters.category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label for="priority">Priority</label><select id="priority" name="priority"><option value="">All priorities</option>{% for value,label in priority_choices %}<option value="{{ value }}"{% if filters.priority == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button type="submit">Apply filters</button>
+    <a href="{% url 'complaints:official_dashboard' %}">Clear filters</a>
+  </form>
+  <p><strong>{{ complaints|length }}</strong> {% if filters.archived %}archived{% else %}active{% endif %} complaint{{ complaints|length|pluralize }} shown. Archived records are hidden from public pages and kept for audit.</p>
+  {% if filters.archived %}<p><a href="{% url 'complaints:official_dashboard' %}">View active complaints</a></p>{% else %}<p><a href="{% url 'complaints:official_dashboard' %}?archived=1">View archived complaints</a></p>{% endif %}
+  {% if complaints %}
+    <table>
+      <thead><tr><th>Reference</th><th>Ward</th><th>Category</th><th>Issue</th><th>Status</th><th>Priority</th><th>Assigned to</th><th>SLA</th><th>Escalation</th><th>Submitted</th><th></th></tr></thead>
+      <tbody>
+      {% for complaint in complaints %}
+        <tr>
+          <td>{{ complaint.complaint_id }}</td><td>{{ complaint.ward_number }}</td>
+          <td>{{ complaint.get_category_display }}</td><td>{{ complaint.title }}</td>
+          <td>{{ complaint.get_status_display }}</td><td>{{ complaint.get_priority_display }}</td>
+          <td>{{ complaint.assigned_to|default:"Unassigned" }}</td>
+          <td>{% if complaint.is_overdue %}Overdue{% elif complaint.target_resolution_at %}Due {{ complaint.target_resolution_at|date:"j M" }}{% else %}—{% endif %}</td>
+          <td>{% if complaint.escalated_at %}Escalated{% else %}—{% endif %}</td>
+          <td>{{ complaint.created_at|date:"j M Y, g:i A" }}</td>
+          <td>
+            {% if filters.archived %}
+              <form method="post" action="{% url 'complaints:official_archive' complaint.complaint_id %}">{% csrf_token %}<button type="submit">Restore</button></form>
+            {% else %}
+              {% if complaint.status == "RESOLVED" or complaint.status == "CLOSED" %}<span>Completed</span>{% else %}<a href="{% url 'complaints:official_update' complaint.complaint_id %}">Review</a>{% endif %}
+              <form method="post" action="{% url 'complaints:official_archive' complaint.complaint_id %}" style="display:inline" onsubmit="return confirm('Archive this complaint? It will be hidden from public pages and can be restored later.');">{% csrf_token %}<button type="submit">Archive</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}<p>No complaints match these filters.</p>{% endif %}
+</main>
+</body>
+</html>

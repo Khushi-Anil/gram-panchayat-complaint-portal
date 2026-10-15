@@ -1,0 +1,80 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Submit a complaint | Gram Panchayat Portal</title>
+  <style>
+    :root { color-scheme: light; font-family: Segoe UI, Arial, sans-serif; color: #17251f; background: #f3f7f3; }
+    body { margin: 0; padding: 32px 16px; }
+    main { max-width: 820px; margin: 0 auto; background: white; padding: 32px; border-radius: 14px; box-shadow: 0 8px 30px #173c2514; }
+    h1 { margin-top: 0; color: #175b38; } p { line-height: 1.55; }
+    .privacy { padding: 12px 14px; background: #edf7ef; border-left: 4px solid #318451; }
+    label { display: block; margin: 18px 0 6px; font-weight: 600; }
+    input, select, textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; }
+    input[type=radio] { width: auto; } .privacy-options label { display: inline-flex; align-items: center; gap: 6px; margin-right: 18px; }
+    button { margin-top: 22px; padding: 12px 20px; border: 0; border-radius: 6px; background: #176b40; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    .errorlist { color: #a32121; } .help { color: #536158; font-size: .92rem; }
+    #photo-drop-zone { border: 2px dashed #aab8ad; border-radius: 8px; padding: 18px; background: #f7faf7; }
+    #photo-drop-zone.dragging { border-color: #176b40; background: #edf7ef; }
+  </style>
+  <link rel="stylesheet" href="{% static 'complaints/portal.css' %}">
+</head>
+<body>
+<main class="form-page">
+  <header class="page-header"><a class="brand" href="{% url 'complaints:public_dashboard' %}"><span class="brand-mark" aria-hidden="true">GP</span><span><span class="brand-name">Gram Panchayat</span><span class="brand-subtitle">Citizen service portal</span></span></a><nav class="page-nav" aria-label="Page navigation"><a href="{% url 'complaints:public_dashboard' %}">Dashboard</a><a href="{% url 'complaints:track' %}">Track complaint</a><a href="{% url 'complaints:ledger' %}">Public ledger</a>{% if request.user.is_authenticated and not request.user.is_staff %}<a href="{% url 'complaints:citizen_dashboard' %}">My complaints</a>{% endif %}{% if request.user.is_authenticated and not request.user.is_staff %}<form method="post" action="{% url 'complaints:citizen_logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>{% else %}<a href="{% url 'complaints:citizen_login' %}">Citizen sign in</a>{% endif %}<a href="{% url 'complaints:official_login' %}">Staff sign in</a></nav></header>
+  <div class="form-intro"><p class="eyebrow">Citizen services · New report</p><h1>Submit a complaint</h1><p>Tell us what needs attention in your ward. You’ll receive a reference and private tracking secret when you submit.</p></div>
+  <p class="privacy"><strong>Your privacy matters.</strong> Submit anonymously or share contact details for staff follow-up. Contact details are kept separate from public pages. Avoid including personal details in the complaint description.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <section class="form-section"><h2>1. Choose your privacy setting</h2><p class="help">You can report without sharing your identity.</p><fieldset class="privacy-options"><legend class="visually-hidden">{{ form.submission_mode.label }}</legend>{{ form.submission_mode }}{{ form.submission_mode.errors }}</fieldset>
+      <div id="private-contact-fields" class="contact-fields" hidden><h3>Contact details for staff follow-up</h3>{% for field in form %}{% if field.name == "citizen_name" or field.name == "citizen_phone" or field.name == "citizen_email" %}<div class="field-row"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}<p class="help">These details are visible only to authorized staff and are stored separately.</p></div>
+    </section>
+    <section class="form-section"><h2>2. Describe the issue</h2><p class="help">Add the ward and location so the right team can find it.</p><div class="field-grid">
+    {% for field in form %}
+      {% if field.name != "submission_mode" and field.name != "citizen_name" and field.name != "citizen_phone" and field.name != "citizen_email" %}
+      <div class="field-row{% if field.name == 'description' or field.name == 'photo' %} field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.name == "photo" %}<div id="photo-drop-zone"><input type="file" name="photo" id="{{ field.id_for_label }}" accept="image/jpeg,image/png,image/webp"><p id="photo-file-name" class="help">Choose a JPG, PNG, or WEBP photo (maximum 5 MB), or drag it here.</p></div>{% else %}{{ field }}{% endif %}
+      {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      {{ field.errors }}
+      {% if field.name == "category" %}<div class="help" id="duplicate-suggestions" aria-live="polite"></div>{% endif %}</div>
+      {% endif %}
+    {% endfor %}</div></section>
+    <div class="form-submit"><button type="submit">Submit complaint</button><span class="help">You can track progress using the reference we provide.</span></div>
+  </form>
+  <script>
+    const modeRadios = document.querySelectorAll('input[name="submission_mode"]');
+    const contactFields = document.getElementById('private-contact-fields');
+    function showContactFields() {
+      contactFields.hidden = document.querySelector('input[name="submission_mode"]:checked')?.value !== 'identified';
+    }
+    modeRadios.forEach((radio) => radio.addEventListener('change', showContactFields));
+    showContactFields();
+    const wardInput = document.getElementById('id_ward_number');
+    const categoryInput = document.getElementById('id_category');
+    const duplicateBox = document.getElementById('duplicate-suggestions');
+    async function checkPossibleDuplicates() {
+      if (!wardInput?.value || !categoryInput?.value) return;
+      const response = await fetch(`{% url 'complaints:duplicates' %}?ward=${encodeURIComponent(wardInput.value)}&category=${encodeURIComponent(categoryInput.value)}`);
+      const data = await response.json();
+      duplicateBox.replaceChildren();
+      if (!data.matches.length) return;
+      const heading = document.createElement('strong'); heading.textContent = 'Similar open complaints in this ward (check before submitting):'; duplicateBox.append(heading);
+      data.matches.forEach((item) => { const p = document.createElement('p'); p.textContent = `${item.reference} · ${item.title} · ${item.status} · ${item.date}`; duplicateBox.append(p); });
+      const link = document.createElement('a'); link.href = '{% url 'complaints:ledger' %}'; link.textContent = 'Review the public grievance ledger'; duplicateBox.append(link);
+    }
+    wardInput?.addEventListener('change', checkPossibleDuplicates);
+    categoryInput?.addEventListener('change', checkPossibleDuplicates);
+    const dropZone = document.getElementById('photo-drop-zone');
+    const photoInput = document.getElementById('id_photo');
+    const photoName = document.getElementById('photo-file-name');
+    photoInput?.addEventListener('change', () => { if (photoInput.files.length) photoName.textContent = photoInput.files[0].name; });
+    ['dragenter','dragover'].forEach((eventName) => dropZone?.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('dragging'); }));
+    ['dragleave','drop'].forEach((eventName) => dropZone?.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('dragging'); }));
+    dropZone?.addEventListener('drop', (event) => { if (event.dataTransfer.files.length) { photoInput.files = event.dataTransfer.files; photoName.textContent = photoInput.files[0].name; } });
+  </script>
+</main>
+</body>
+</html>
